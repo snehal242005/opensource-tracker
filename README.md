@@ -1,4 +1,4 @@
-# Open Source Tracker
+# OpenSource Hub
 
 A web platform where students track their open source Pull Requests through
 stages, get mentor feedback, and stay motivated with points/badges.
@@ -88,13 +88,27 @@ If this file is missing or invalid, the backend still starts up, but any
 request that needs Firebase (auth, Firestore) returns a `500` error with a
 clear message telling you to add the real key — it won't crash the whole app.
 
+**Deploying (e.g. Render):** hosts that don't support uploading a file let
+you set a `FIREBASE_ADMIN_KEY_JSON` environment variable instead, containing
+the full contents of the same JSON key. `firebase_config.py` checks this env
+var first and only falls back to reading `firebase-admin-key.json` off disk
+if it's unset — so locally (no env var set) nothing changes, and in
+production you never need the file at all.
+
+`backend/runtime.txt` pins the Python version Render builds with
+(`python-3.12.10`, matching local dev) so it doesn't default to a newer
+Python that lacks prebuilt wheels for pinned deps like `pydantic-core`
+(compiling those from source fails on Render's build filesystem). This file
+is only read by Render's build system — it has no effect on `venv`/`uvicorn`
+locally.
+
 ## 4. Configure GitHub OAuth (for auto-sync)
 
 1. Go to **GitHub → Settings → Developer settings → OAuth Apps → New OAuth
    App** (for a personal account) at
    https://github.com/settings/developers.
 2. Fill in:
-   - **Application name**: anything, e.g. `Open Source Tracker (local)`
+   - **Application name**: anything, e.g. `OpenSource Hub (local)`
    - **Homepage URL**: `http://localhost:5173`
    - **Authorization callback URL**: `http://localhost:8001/auth/github/callback`
 3. Click **Register application**, then **Generate a new client secret**.
