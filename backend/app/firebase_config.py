@@ -1,3 +1,4 @@
+import json
 import os
 
 import firebase_admin
@@ -8,6 +9,7 @@ SERVICE_ACCOUNT_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "firebase-admin-key.json",
 )
+SERVICE_ACCOUNT_ENV_VAR = "FIREBASE_ADMIN_KEY_JSON"
 
 _firebase_app = None
 _firestore_client = None
@@ -17,12 +19,32 @@ init_error: str | None = None
 def _friendly_error(detail: str) -> str:
     return (
         "Firebase Admin SDK is not configured correctly.\n"
-        f"Expected a valid service account key at: {SERVICE_ACCOUNT_PATH}\n"
+        f"Set the {SERVICE_ACCOUNT_ENV_VAR} environment variable to the full "
+        "service account JSON (recommended for deployments like Render), or "
+        f"place the key file at: {SERVICE_ACCOUNT_PATH}\n"
         "Go to Firebase Console > Project Settings > Service Accounts > "
         "Generate new private key, then save the downloaded file as "
         "backend/firebase-admin-key.json (see README.md for details).\n"
         f"Details: {detail}"
     )
+
+
+def _load_credentials() -> credentials.Certificate:
+    """Load service account credentials, preferring the env var over the local file."""
+    raw_json = os.environ.get(SERVICE_ACCOUNT_ENV_VAR)
+    if raw_json:
+        try:
+            key_data = json.loads(raw_json)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"{SERVICE_ACCOUNT_ENV_VAR} is not valid JSON: {exc}") from exc
+        return credentials.Certificate(key_data)
+
+    if not os.path.exists(SERVICE_ACCOUNT_PATH):
+        raise FileNotFoundError(
+            f"No {SERVICE_ACCOUNT_ENV_VAR} env var set and no file found at "
+            f"{SERVICE_ACCOUNT_PATH}."
+        )
+    return credentials.Certificate(SERVICE_ACCOUNT_PATH)
 
 
 def init_firebase() -> None:
@@ -36,12 +58,8 @@ def init_firebase() -> None:
     if _firebase_app is not None:
         return
 
-    if not os.path.exists(SERVICE_ACCOUNT_PATH):
-        init_error = _friendly_error("File not found.")
-        return
-
     try:
-        cred = credentials.Certificate(SERVICE_ACCOUNT_PATH)
+        cred = _load_credentials()
         _firebase_app = firebase_admin.initialize_app(cred)
         _firestore_client = firestore.client()
         init_error = None
