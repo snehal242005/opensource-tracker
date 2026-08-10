@@ -2,18 +2,156 @@
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-heading: "Sora", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-heading: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --color-ink: #0a0d12;
+  --color-panel: #141922;
+  --color-panel-2: #1a2029;
+  --color-line: #232838;
+  --color-line-strong: #2d3346;
+  --color-paper: #edeff4;
+  --color-muted: #8b93a6;
+
+  --color-signal: #6c63ff;
+  --color-signal-soft: #8b84ff;
+  --color-violet: #b490ff;
+  --color-grow: #2fe6a5;
+  --color-pulse: #ffb454;
+  --color-coral: #ff6b81;
 }
 
 @layer base {
   body {
-    @apply font-sans text-slate-900 antialiased bg-slate-50;
+    @apply font-sans text-paper antialiased;
+    background: var(--color-ink);
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(108, 99, 255, 0.16), transparent 42%),
+      radial-gradient(circle at 88% 92%, rgba(47, 230, 165, 0.08), transparent 45%);
+    background-attachment: fixed;
   }
 
   h1,
   h2,
   h3,
   h4 {
-    @apply font-heading text-slate-900;
+    @apply font-heading text-paper tracking-tight;
+  }
+
+  ::selection {
+    background: rgba(108, 99, 255, 0.35);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-semibold text-white shadow-[0_0_0_1px_rgba(108,99,255,0.4),0_8px_20px_-6px_rgba(108,99,255,0.55)] transition disabled:cursor-not-allowed disabled:opacity-60;
+    background: linear-gradient(135deg, var(--color-signal), #837bff);
+  }
+  .btn-primary:not(:disabled):hover {
+    filter: brightness(1.08);
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg border px-4 py-2 text-sm font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60;
+    border-color: var(--color-line-strong);
+    background: var(--color-panel-2);
+    color: var(--color-paper);
+  }
+  .btn-secondary:not(:disabled):hover {
+    background: var(--color-line);
+    border-color: var(--color-signal-soft);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition;
+    color: var(--color-muted);
+  }
+  .btn-ghost:hover {
+    color: var(--color-paper);
+    background: var(--color-panel-2);
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-sm font-medium;
+    color: var(--color-paper);
+  }
+
+  .input-field {
+    @apply block w-full rounded-lg border px-3 py-2 text-sm shadow-sm transition placeholder:text-[color:var(--color-muted)] focus:outline-none;
+    background: var(--color-panel-2);
+    border-color: var(--color-line-strong);
+    color: var(--color-paper);
+  }
+  .input-field:focus {
+    border-color: var(--color-signal);
+    box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.22);
+  }
+
+  .card {
+    @apply rounded-2xl border shadow-[0_1px_0_rgba(255,255,255,0.02)_inset];
+    background: var(--color-panel);
+    border-color: var(--color-line);
+  }
+
+  .surface-glow {
+    box-shadow: 0 20px 60px -24px rgba(108, 99, 255, 0.35);
+  }
+}
+
+@keyframes pipeline-travel {
+  0% {
+    left: 0%;
+    opacity: 0;
+  }
+  6% {
+    opacity: 1;
+  }
+  94% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+
+.pipeline-runner {
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  margin-top: -3.5px;
+  background: #f4f5f7;
+  box-shadow: 0 0 14px 4px rgba(180, 144, 255, 0.85);
+  animation-name: pipeline-travel;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes pipeline-node-pulse {
+  0% {
+    transform: scale(1.8);
+    box-shadow: 0 0 16px 4px var(--glow, transparent);
+  }
+  18% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 var(--glow, transparent);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 var(--glow, transparent);
+  }
+}
+
+.pipeline-node {
+  animation-name: pipeline-node-pulse;
+  animation-timing-function: ease-out;
+  animation-iteration-count: infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pipeline-runner,
+  .pipeline-node {
+    animation: none;
   }
 }

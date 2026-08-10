@@ -3,20 +3,20 @@ import StageBadge from "./StageBadge";
 export default function PRCard({ pr }) {
   const isAuto = pr.source === "auto";
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+    <div className="group flex flex-col gap-3 rounded-xl border border-line bg-panel p-4 shadow-[0_1px_0_rgba(255,255,255,0.02)_inset] transition hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_16px_32px_-16px_rgba(108,99,255,0.35)]">
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-heading text-sm font-semibold leading-snug text-slate-900">
-          {pr.title}
-        </h3>
+        <h3 className="font-heading text-sm font-semibold leading-snug text-paper">{pr.title}</h3>
         <StageBadge stage={pr.stage} />
       </div>
 
       <div className="flex items-center gap-2">
-        <p className="text-sm text-slate-500">{pr.repo}</p>
+        <p className="truncate font-mono text-xs text-muted">{pr.repo}</p>
         <span
           title={isAuto ? "Synced automatically from GitHub" : "Added manually"}
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-            isAuto ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500 ring-1 ring-inset ring-slate-200"
+          className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+            isAuto
+              ? "bg-signal/15 text-signal-soft ring-1 ring-inset ring-signal/30"
+              : "bg-panel-2 text-muted ring-1 ring-inset ring-line-strong"
           }`}
         >
           {isAuto ? (
@@ -32,7 +32,7 @@ export default function PRCard({ pr }) {
         href={pr.url}
         target="_blank"
         rel="noreferrer"
-        className="mt-auto inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-500"
+        className="mt-auto inline-flex items-center gap-1 text-sm font-medium text-signal-soft transition group-hover:gap-1.5 hover:text-violet"
       >
         View pull request
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">

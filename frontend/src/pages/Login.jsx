@@ -39,7 +39,7 @@ export default function Login() {
       footer={
         <>
           Don&apos;t have an account?{" "}
-          <Link to="/signup" className="font-medium text-indigo-600 hover:text-indigo-500">
+          <Link to="/signup" className="font-medium text-signal-soft hover:text-violet">
             Sign up
           </Link>
         </>
@@ -69,14 +69,12 @@ export default function Login() {
         </FormField>
 
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+          <p className="rounded-lg border border-coral/30 bg-coral/10 px-3 py-2 text-sm text-coral">
+            {error}
+          </p>
         )}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-1 w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-        >
+        <button type="submit" disabled={submitting} className="btn-primary mt-1 w-full">
           {submitting ? "Logging in..." : "Log In"}
         </button>
       </form>

@@ -70,21 +70,17 @@ export default function PRForm({ onCreate, onDone }) {
         </select>
       </FormField>
 
-      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && (
+        <p className="rounded-lg border border-coral/30 bg-coral/10 px-3 py-2 text-sm text-coral">
+          {error}
+        </p>
+      )}
 
       <div className="mt-2 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onDone}
-          className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
-        >
+        <button type="button" onClick={onDone} className="btn-ghost">
           Cancel
         </button>
-        <button
-          type="submit"
-          disabled={submitting}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
-        >
+        <button type="submit" disabled={submitting} className="btn-primary">
           {submitting ? "Adding..." : "Add PR"}
         </button>
       </div>

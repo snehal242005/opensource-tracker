@@ -11,6 +11,8 @@ import PageShell from "../components/PageShell";
 import PRForm from "../components/PRForm";
 import PRCard from "../components/PRCard";
 import Modal from "../components/Modal";
+import EmptyPRsIllustration from "../components/EmptyPRsIllustration";
+import StatTile from "../components/StatTile";
 
 export default function StudentDashboard() {
   const { profile, refreshProfile } = useAuth();
@@ -92,31 +94,30 @@ export default function StudentDashboard() {
     }
   }
 
+  const total = prs.length;
+  const merged = prs.filter((pr) => pr.stage === "Merged").length;
+  const inProgress = prs.filter(
+    (pr) => pr.stage !== "Merged" && pr.stage !== "Closed/Rejected"
+  ).length;
+  const mergeRate = total ? Math.round((merged / total) * 100) : 0;
+
   return (
     <PageShell>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">My Pull Requests</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="font-heading text-2xl font-semibold text-paper">My Pull Requests</h1>
+          <p className="mt-1 text-sm text-muted">
             Track every PR you've raised and where it stands.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {profile?.github_connected ? (
-            <button
-              onClick={handleSync}
-              disabled={syncing}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
+            <button onClick={handleSync} disabled={syncing} className="btn-secondary">
               {syncing ? "Syncing..." : "Sync Now"}
             </button>
           ) : (
-            <button
-              onClick={handleConnectGithub}
-              disabled={connecting}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
+            <button onClick={handleConnectGithub} disabled={connecting} className="btn-secondary">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="h-4 w-4">
                 <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z" />
               </svg>
@@ -124,10 +125,7 @@ export default function StudentDashboard() {
             </button>
           )}
 
-          <button
-            onClick={() => setShowForm(true)}
-            className="inline-flex w-fit items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500"
-          >
+          <button onClick={() => setShowForm(true)} className="btn-primary w-fit">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
               <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
             </svg>
@@ -137,30 +135,92 @@ export default function StudentDashboard() {
       </div>
 
       {profile?.github_connected && (
-        <p className="mt-2 text-xs text-slate-400">
-          Connected as GitHub @{profile.github_username}
+        <p className="mt-2 font-mono text-xs text-muted">
+          connected as @{profile.github_username}
           {profile.last_synced_at &&
             ` · last synced ${new Date(profile.last_synced_at).toLocaleString()}`}
         </p>
       )}
 
       {notice && (
-        <p className="mt-4 rounded-lg bg-teal-50 px-3 py-2 text-sm text-teal-700">{notice}</p>
+        <p className="mt-4 rounded-lg border border-grow/30 bg-grow/10 px-3 py-2 text-sm text-grow">
+          {notice}
+        </p>
       )}
 
       {error && (
-        <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="mt-4 rounded-lg border border-coral/30 bg-coral/10 px-3 py-2 text-sm text-coral">
+          {error}
+        </p>
+      )}
+
+      {!loading && total > 0 && (
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <StatTile
+            label="Total PRs"
+            value={total}
+            accent="signal"
+            icon={
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" className="h-5 w-5">
+                <circle cx="4" cy="3.2" r="1.6" stroke="currentColor" strokeWidth="1.3" />
+                <circle cx="4" cy="12.8" r="1.6" stroke="currentColor" strokeWidth="1.3" />
+                <circle cx="12" cy="12.8" r="1.6" stroke="currentColor" strokeWidth="1.3" />
+                <path d="M4 4.8V11.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                <path d="M12 11.2V8a3 3 0 0 0-3-3H6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              </svg>
+            }
+          />
+          <StatTile
+            label="Merged"
+            value={merged}
+            accent="grow"
+            icon={
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" className="h-5 w-5">
+                <path d="M3.5 8.5 6.5 11.5 12.5 4.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            }
+          />
+          <StatTile
+            label="In progress"
+            value={inProgress}
+            accent="pulse"
+            icon={
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" className="h-5 w-5">
+                <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.4" />
+                <path d="M8 4.8V8l2.4 1.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            }
+          />
+          <StatTile
+            label="Merge rate"
+            value={`${mergeRate}%`}
+            accent="violet"
+            icon={
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" className="h-5 w-5">
+                <path d="M2.5 12.5v-3M6.5 12.5v-6M10.5 12.5v-4M14 12.5V3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            }
+          />
+        </div>
       )}
 
       <div className="mt-6">
         {loading ? (
-          <p className="text-sm text-slate-500">Loading...</p>
+          <div className="flex items-center gap-2 text-sm text-muted">
+            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-line-strong border-t-signal" />
+            Loading...
+          </div>
         ) : prs.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
-            <p className="text-sm text-slate-500">No pull requests yet.</p>
+          <div className="card flex flex-col items-center border-dashed px-6 py-14 text-center">
+            <EmptyPRsIllustration />
+            <p className="mt-4 text-sm font-medium text-paper">No pull requests yet.</p>
+            <p className="mt-1 max-w-xs text-sm text-muted">
+              Connect GitHub to auto-sync your PRs, or add one manually to
+              start tracking your progress.
+            </p>
             <button
               onClick={() => setShowForm(true)}
-              className="mt-3 text-sm font-medium text-indigo-600 hover:text-indigo-500"
+              className="mt-4 text-sm font-medium text-signal-soft hover:text-violet"
             >
               Add your first one
             </button>

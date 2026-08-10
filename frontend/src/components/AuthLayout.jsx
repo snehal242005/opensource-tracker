@@ -1,20 +1,28 @@
+import Logo from "./Logo";
+import AuthIllustration from "./AuthIllustration";
+import PipelineRail from "./PipelineRail";
+
 export default function AuthLayout({ title, subtitle, children, footer }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
-      <div className="w-full max-w-sm">
-        <div className="mb-6 flex flex-col items-center gap-2">
-          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-600 text-sm font-bold text-white">
-            OS
-          </span>
-          <h1 className="font-heading text-xl font-semibold text-slate-900">{title}</h1>
-          {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
-        </div>
+    <div className="flex min-h-screen items-center justify-center px-4 py-12">
+      <div className="grid w-full max-w-5xl items-center gap-10 lg:grid-cols-[1.1fr_1fr]">
+        <AuthIllustration />
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-          {children}
-        </div>
+        <div className="mx-auto w-full max-w-sm">
+          <div className="mb-6 flex flex-col items-center gap-2 text-center">
+            <Logo className="h-10 w-10" />
+            <h1 className="font-heading text-2xl font-semibold text-paper">{title}</h1>
+            {subtitle && <p className="text-sm text-muted">{subtitle}</p>}
+          </div>
 
-        {footer && <div className="mt-6 text-center text-sm text-slate-500">{footer}</div>}
+          <div className="mb-6 lg:hidden">
+            <PipelineRail compact />
+          </div>
+
+          <div className="card p-6 sm:p-8">{children}</div>
+
+          {footer && <div className="mt-6 text-center text-sm text-muted">{footer}</div>}
+        </div>
       </div>
     </div>
   );
