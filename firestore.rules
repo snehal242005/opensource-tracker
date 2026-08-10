@@ -1,0 +1,52 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function myRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    // users/{uid}: a user can read/create/update only their own profile.
+    // Role can only be set at creation time, not changed afterwards from the client.
+    match /users/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow create: if isSignedIn() && request.auth.uid == uid;
+      allow update: if isSignedIn() && request.auth.uid == uid
+                    && request.resource.data.role == resource.data.role;
+      allow delete: if false;
+    }
+
+    // pull_requests/{id}: a student can read/write only their own PRs.
+    // Mentors/admins can read all PRs (writes go through the backend, which
+    // uses the Admin SDK and bypasses these rules).
+    match /pull_requests/{prId} {
+      allow read: if isSignedIn() && (
+        resource.data.student_id == request.auth.uid ||
+        myRole() in ['mentor', 'admin']
+      );
+      allow create: if isSignedIn()
+                    && request.resource.data.student_id == request.auth.uid
+                    && myRole() == 'student';
+      allow update, delete: if isSignedIn() && resource.data.student_id == request.auth.uid;
+    }
+
+    // github_tokens/{uid}: encrypted GitHub OAuth access tokens. Written and
+    // read only by the FastAPI backend via the Admin SDK, which bypasses
+    // these rules -- the client SDK must never read or write this
+    // collection, so it's explicitly denied rather than left unmatched.
+    match /github_tokens/{uid} {
+      allow read, write: if false;
+    }
+
+    // oauth_states/{state}: short-lived CSRF state tokens for the GitHub
+    // OAuth flow. Backend-only, same reasoning as above.
+    match /oauth_states/{state} {
+      allow read, write: if false;
+    }
+  }
+}

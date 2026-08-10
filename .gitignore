@@ -1,0 +1,22 @@
+# Node / frontend
+node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# Python / backend
+__pycache__/
+*.pyc
+backend/venv/
+backend/.venv/
+backend/firebase-admin-key.json
+
+# Env files
+.env
+.env.local
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
