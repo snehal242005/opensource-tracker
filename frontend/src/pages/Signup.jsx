@@ -61,6 +61,7 @@ export default function Signup() {
 
   return (
     <AuthLayout
+      variant="signup"
       title="Create your account"
       subtitle="Track your open source journey"
       footer={

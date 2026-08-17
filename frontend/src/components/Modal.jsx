@@ -1,10 +1,14 @@
 export default function Modal({ title, onClose, wide = false, children }) {
   return (
     <div className="fixed inset-0 z-20 flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-ink/70 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div
+        className="modal-backdrop absolute inset-0 bg-ink/70 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
       <div
-        className={`card surface-glow relative w-full p-6 ${wide ? "max-w-2xl" : "max-w-md"}`}
+        className={`card surface-glow modal-card relative w-full p-6 ${wide ? "max-w-2xl" : "max-w-md"}`}
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-heading text-lg font-semibold text-paper">{title}</h2>

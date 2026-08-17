@@ -2,11 +2,11 @@ import Logo from "./Logo";
 import AuthIllustration from "./AuthIllustration";
 import PipelineRail from "./PipelineRail";
 
-export default function AuthLayout({ title, subtitle, children, footer }) {
+export default function AuthLayout({ title, subtitle, children, footer, variant = "login" }) {
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-12">
       <div className="grid w-full max-w-5xl items-center gap-10 lg:grid-cols-[1.1fr_1fr]">
-        <AuthIllustration />
+        <AuthIllustration variant={variant} />
 
         <div className="mx-auto w-full max-w-sm">
           <div className="mb-6 flex flex-col items-center gap-2 text-center">

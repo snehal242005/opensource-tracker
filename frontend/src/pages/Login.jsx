@@ -34,6 +34,7 @@ export default function Login() {
 
   return (
     <AuthLayout
+      variant="login"
       title="Welcome back"
       subtitle="Log in to your account"
       footer={

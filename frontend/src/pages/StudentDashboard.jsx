@@ -15,6 +15,9 @@ import Modal from "../components/Modal";
 import EmptyPRsIllustration from "../components/EmptyPRsIllustration";
 import StatTile from "../components/StatTile";
 
+const EMPTY_STATE_PHOTO =
+  "https://media.istockphoto.com/id/1020834246/photo/html-and-css-code-developing-screenshot.jpg?s=1024x1024&w=is&k=20&c=ApfbIsrROrLyi5R-iSwvL5b8z75F4BKVICD3Hiqa8ZQ=";
+
 export default function StudentDashboard() {
   const { profile, refreshProfile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -213,19 +216,34 @@ export default function StudentDashboard() {
             Loading...
           </div>
         ) : prs.length === 0 ? (
-          <div className="card flex flex-col items-center border-dashed px-6 py-14 text-center">
-            <EmptyPRsIllustration />
-            <p className="mt-4 text-sm font-medium text-paper">No pull requests yet.</p>
-            <p className="mt-1 max-w-xs text-sm text-muted">
-              Connect GitHub to auto-sync your PRs, or add one manually to
-              start tracking your progress.
-            </p>
-            <button
-              onClick={() => setShowForm(true)}
-              className="mt-4 text-sm font-medium text-signal-soft hover:text-violet"
-            >
-              Add your first one
-            </button>
+          <div className="card relative flex flex-col items-center overflow-hidden border-dashed px-6 py-16 text-center">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-[0.12]"
+              style={{ backgroundImage: `url(${EMPTY_STATE_PHOTO})` }}
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "radial-gradient(circle at 50% 20%, transparent, var(--color-panel) 70%), linear-gradient(180deg, transparent 40%, var(--color-panel) 100%)",
+              }}
+            />
+            <div className="relative z-10 flex flex-col items-center">
+              <EmptyPRsIllustration />
+              <p className="mt-4 text-sm font-medium text-paper">No pull requests yet.</p>
+              <p className="mt-1 max-w-xs text-sm text-muted">
+                Connect GitHub to auto-sync your PRs, or add one manually to
+                start tracking your progress.
+              </p>
+              <button
+                onClick={() => setShowForm(true)}
+                className="mt-4 text-sm font-medium text-signal-soft hover:text-violet"
+              >
+                Add your first one
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
