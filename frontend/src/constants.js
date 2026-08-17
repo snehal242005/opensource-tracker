@@ -22,3 +22,5 @@ export const STAGE_STYLES = {
 };
 
 export const ROLES = ["student", "mentor", "admin"];
+
+export const YEAR_OPTIONS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];

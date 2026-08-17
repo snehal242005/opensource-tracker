@@ -36,18 +36,40 @@ def _doc_to_out(doc) -> PullRequestOut:
     )
 
 
+def _chunked(items: list, size: int):
+    for i in range(0, len(items), size):
+        yield items[i : i + size]
+
+
 @router.get("", response_model=list[PullRequestOut])
 async def list_pull_requests(current_user: dict = Depends(get_current_user)):
     db = get_firestore()
     collection_ref = db.collection(COLLECTION)
 
     if current_user["role"] == "student":
-        query = collection_ref.where("student_id", "==", current_user["uid"])
-    else:
-        # mentors and admins can see every submission
-        query = collection_ref
+        docs = collection_ref.where("student_id", "==", current_user["uid"]).stream()
+        return [_doc_to_out(doc) for doc in docs]
 
-    docs = query.stream()
+    if current_user["role"] == "mentor":
+        # Only PRs belonging to students who picked this mentor at signup --
+        # not every student in the program. `in` queries are capped at 30
+        # values, so chunk in case a mentor has more assigned students than that.
+        student_ids = [
+            doc.id
+            for doc in db.collection("users")
+            .where("role", "==", "student")
+            .where("mentor_id", "==", current_user["uid"])
+            .stream()
+        ]
+        if not student_ids:
+            return []
+        docs = []
+        for chunk in _chunked(student_ids, 30):
+            docs.extend(collection_ref.where("student_id", "in", chunk).stream())
+        return [_doc_to_out(doc) for doc in docs]
+
+    # admin: every submission
+    docs = collection_ref.stream()
     return [_doc_to_out(doc) for doc in docs]
 
 

@@ -13,8 +13,16 @@ service cloud.firestore {
 
     // users/{uid}: a user can read/create/update only their own profile.
     // Role can only be set at creation time, not changed afterwards from the client.
+    // Mentors can additionally read a student's profile if that student
+    // picked them as their mentor at signup (mentor_id == the mentor's own
+    // uid) -- not any other student. Admins are not given broader client-side
+    // read here; the mentor/admin dashboard's full-roster view goes through
+    // the backend (Admin SDK, bypasses these rules) instead.
     match /users/{uid} {
-      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow read: if isSignedIn() && (
+        request.auth.uid == uid ||
+        (myRole() == 'mentor' && resource.data.role == 'student' && resource.data.mentor_id == request.auth.uid)
+      );
       allow create: if isSignedIn() && request.auth.uid == uid;
       allow update: if isSignedIn() && request.auth.uid == uid
                     && request.resource.data.role == resource.data.role;
@@ -33,6 +41,40 @@ service cloud.firestore {
                     && request.resource.data.student_id == request.auth.uid
                     && myRole() == 'student';
       allow update, delete: if isSignedIn() && resource.data.student_id == request.auth.uid;
+    }
+
+    // feedback/{feedbackId}: mentor/admin feedback on a PR, plus student
+    // replies (linked via parent_id). Writes normally go through the
+    // backend (Admin SDK, bypasses these rules), but the create rule below
+    // mirrors the same policy in case of a direct client write: mentors/
+    // admins can open a new thread, the involved student can only reply
+    // (never author a fresh, non-reply entry) and never edit/delete
+    // anyone's feedback once posted, including their own.
+    match /feedback/{feedbackId} {
+      allow read: if isSignedIn() && (
+        resource.data.student_id == request.auth.uid ||
+        myRole() in ['mentor', 'admin']
+      );
+      allow create: if isSignedIn() && (
+        (myRole() in ['mentor', 'admin'] && request.resource.data.author_id == request.auth.uid)
+        ||
+        (myRole() == 'student'
+          && request.resource.data.author_id == request.auth.uid
+          && request.resource.data.parent_id != null
+          && get(/databases/$(database)/documents/pull_requests/$(request.resource.data.pr_id)).data.student_id == request.auth.uid)
+      );
+      allow update, delete: if false;
+    }
+
+    // notifications/{notificationId}: created only by the backend (e.g. when
+    // a mentor leaves feedback). A user can read their own notifications and
+    // flip `read` on their own docs (opening the bell marks them read) but
+    // can't create/delete or touch anyone else's.
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.user_id == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow create, delete: if false;
     }
 
     // github_tokens/{uid}: encrypted GitHub OAuth access tokens. Written and

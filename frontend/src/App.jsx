@@ -3,7 +3,7 @@ import { useAuth } from "./context/AuthContext";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import StudentDashboard from "./pages/StudentDashboard";
-import StaffPlaceholder from "./pages/StaffPlaceholder";
+import MentorDashboard from "./pages/MentorDashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import FullScreenLoader from "./components/FullScreenLoader";
 
@@ -32,7 +32,7 @@ export default function App() {
         path="/staff"
         element={
           <ProtectedRoute allowedRoles={["mentor", "admin"]}>
-            <StaffPlaceholder />
+            <MentorDashboard />
           </ProtectedRoute>
         }
       />

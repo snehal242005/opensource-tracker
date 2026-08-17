@@ -78,3 +78,47 @@ export async function syncGithubPullRequests() {
   });
   return handleResponse(res);
 }
+
+export async function listPublicMentors() {
+  // No auth header: called from the signup form before the student's
+  // Firebase Auth account (and ID token) exists yet.
+  const res = await fetch(`${API_BASE_URL}/mentors`);
+  return handleResponse(res);
+}
+
+export async function listUsers() {
+  const headers = await authHeaders();
+  const res = await fetch(`${API_BASE_URL}/users`, { headers });
+  return handleResponse(res);
+}
+
+export async function listFeedbackForPR(prId) {
+  const headers = await authHeaders();
+  const res = await fetch(`${API_BASE_URL}/feedback/pr/${prId}`, { headers });
+  return handleResponse(res);
+}
+
+export async function createFeedback({ pr_id, comment, status_recommendation, parent_id }) {
+  const headers = await authHeaders();
+  const res = await fetch(`${API_BASE_URL}/feedback`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ pr_id, comment, status_recommendation, parent_id }),
+  });
+  return handleResponse(res);
+}
+
+export async function listNotifications() {
+  const headers = await authHeaders();
+  const res = await fetch(`${API_BASE_URL}/notifications`, { headers });
+  return handleResponse(res);
+}
+
+export async function markNotificationsRead() {
+  const headers = await authHeaders();
+  const res = await fetch(`${API_BASE_URL}/notifications/mark_read`, {
+    method: "POST",
+    headers,
+  });
+  return handleResponse(res);
+}

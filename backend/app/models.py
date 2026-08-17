@@ -51,3 +51,59 @@ class SyncSummary(BaseModel):
     created: int
     updated: int
     synced_manual: int
+
+
+class UserOut(BaseModel):
+    uid: str
+    name: Optional[str] = None
+    email: Optional[str] = None
+    role: Optional[str] = None
+    roll_number: Optional[str] = None
+    college_name: Optional[str] = None
+    year: Optional[str] = None
+    mentor_id: Optional[str] = None
+
+
+class MentorOut(BaseModel):
+    """Minimal, public-safe mentor info for the signup mentor dropdown."""
+
+    uid: str
+    name: Optional[str] = None
+    email: Optional[str] = None
+
+
+class FeedbackStatus(str, Enum):
+    APPROVE = "approve"
+    REQUEST_CHANGES = "request_changes"
+    COMMENT = "comment"
+
+
+class FeedbackCreate(BaseModel):
+    pr_id: str = Field(..., min_length=1)
+    comment: str = Field(..., min_length=1)
+    status_recommendation: Optional[FeedbackStatus] = None
+    parent_id: Optional[str] = None
+
+
+class FeedbackOut(BaseModel):
+    id: str
+    pr_id: str
+    student_id: str
+    mentor_id: Optional[str] = None
+    mentor_name: Optional[str] = None
+    author_id: str
+    author_name: Optional[str] = None
+    author_role: str
+    comment: str
+    status_recommendation: Optional[FeedbackStatus] = None
+    parent_id: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class NotificationOut(BaseModel):
+    id: str
+    user_id: str
+    message: str
+    read: bool
+    related_pr_id: Optional[str] = None
+    created_at: Optional[str] = None

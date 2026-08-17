@@ -3,20 +3,27 @@
 A web platform where students track their open source Pull Requests through
 stages, get mentor feedback, and stay motivated with points/badges.
 
-This repo currently implements **Phase 1 (Foundation)** and **Phase 2
-(GitHub Auto-Sync)**:
+This repo currently implements **Phase 1 (Foundation)**, **Phase 2 (GitHub
+Auto-Sync)**, and **Phase 3 (Mentor Feedback + Notifications)**:
 
 - Firebase email/password auth with three roles: Student, Mentor, Admin
 - FastAPI backend that verifies Firebase ID tokens and exposes CRUD endpoints
   for a `pull_requests` collection
 - React (Vite) frontend with signup/login, a student dashboard (list + add
-  PR), and placeholder pages for mentors/admins
+  PR), and a mentor/admin dashboard
 - Students can connect their GitHub account (OAuth) and sync their pull
   requests automatically — synced PRs are mapped onto the same 8-stage
   pipeline as manually-added ones and visually labeled "GitHub sync"
+- Mentors/admins can open a PR and leave feedback (a comment plus an
+  approve/request-changes/comment recommendation); the student can reply
+  in-thread, and gets an in-app notification when new feedback arrives
+- Students pick a mentor by name from a dropdown at signup (along with roll
+  number, college, and year); a mentor's dashboard only ever shows the
+  students who picked them, grouped by student — not the whole program roster
 
-Mentor feedback, gamification, and AI features are **not** built yet — they
-come in later phases.
+Admins are still unscoped (they see every student, same as before) since
+per-admin assignment isn't a concept here — an admin oversees the whole
+program. Gamification and AI features are **not** built yet.
 
 ## Project structure
 
@@ -34,7 +41,11 @@ opensource-tracker/
 │   │   ├── models.py
 │   │   └── routers/
 │   │       ├── auth.py            /auth/github/login, /auth/github/callback
-│   │       └── pull_requests.py   CRUD + /pull_requests/sync
+│   │       ├── pull_requests.py   CRUD + /pull_requests/sync
+│   │       ├── feedback.py        POST /feedback, GET /feedback/pr/{pr_id}
+│   │       ├── notifications.py   GET /notifications, POST /notifications/mark_read
+│   │       ├── users.py           GET /users (mentor/admin only, scoped to own students for mentors)
+│   │       └── mentors.py         GET /mentors (public -- signup mentor dropdown)
 │   ├── requirements.txt
 │   ├── firebase-admin-key.example.json   (template, tracked)
 │   ├── firebase-admin-key.json           (your real key, git-ignored)
@@ -213,7 +224,10 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow read: if isSignedIn() && (
+        request.auth.uid == uid ||
+        (myRole() == 'mentor' && resource.data.role == 'student' && resource.data.mentor_id == request.auth.uid)
+      );
       allow create: if isSignedIn() && request.auth.uid == uid;
       allow update: if isSignedIn() && request.auth.uid == uid
                     && request.resource.data.role == resource.data.role;
@@ -231,6 +245,29 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && resource.data.student_id == request.auth.uid;
     }
 
+    match /feedback/{feedbackId} {
+      allow read: if isSignedIn() && (
+        resource.data.student_id == request.auth.uid ||
+        myRole() in ['mentor', 'admin']
+      );
+      allow create: if isSignedIn() && (
+        (myRole() in ['mentor', 'admin'] && request.resource.data.author_id == request.auth.uid)
+        ||
+        (myRole() == 'student'
+          && request.resource.data.author_id == request.auth.uid
+          && request.resource.data.parent_id != null
+          && get(/databases/$(database)/documents/pull_requests/$(request.resource.data.pr_id)).data.student_id == request.auth.uid)
+      );
+      allow update, delete: if false;
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.user_id == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.user_id == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow create, delete: if false;
+    }
+
     match /github_tokens/{uid} {
       allow read, write: if false;
     }
@@ -243,27 +280,97 @@ service cloud.firestore {
 ```
 
 These rules mean: everyone can only ever read/write their own `users` doc
-(and can't change their own role after signup), students can only create and
-manage their own PRs, and mentors/admins can read every PR. `github_tokens`
+(and can't change their own role after signup); a mentor can additionally
+read a student's doc if that student picked them as mentor
+(`mentor_id == the mentor's own uid`), but no other student's. Students can
+only create and manage their own PRs, and mentors/admins can read every PR
+(PR-level scoping for mentors — only their own students' PRs — is enforced
+by the backend, not these rules; see "How mentor-student mapping works"
+below). On `feedback`,
+mentors/admins can open a new thread, the involved student can only reply
+(never start a fresh, non-reply entry) and nobody can edit or delete a
+feedback entry once posted. On `notifications`, a user can read their own
+notifications and flip `read` on their own docs (that's all opening the bell
+dropdown does), but only the backend can create or delete one. `github_tokens`
 and `oauth_states` are denied to the client SDK entirely — only the backend
 (Admin SDK) ever touches them. The FastAPI backend uses the Admin SDK, which
 bypasses these rules entirely (it's trusted server-side code) and does its
-own permission checks on top.
+own permission checks on top — see "How mentor feedback + notifications
+work" below for those checks.
 
 ## How auth + roles work
 
 1. On the frontend, signup calls Firebase Auth's
    `createUserWithEmailAndPassword`, then writes a matching profile document
    directly to Firestore at `users/{uid}`: `{ uid, name, email, role,
-   created_at }`.
+   created_at }`, plus `{ roll_number, college_name, year, mentor_id }` when
+   `role == "student"` (see "How mentor-student mapping works" below).
 2. On login, the frontend reads that Firestore doc to know the user's role
-   and redirects: `student` → `/dashboard`, `mentor`/`admin` → `/staff`
-   (placeholder for now).
+   and redirects: `student` → `/dashboard`, `mentor`/`admin` → `/staff`.
 3. For backend API calls, the frontend attaches the user's Firebase ID token
    as `Authorization: Bearer <token>`. The backend verifies the token with
    the Admin SDK, looks up the caller's role in Firestore, and enforces
    permissions (e.g. only students can create PRs; only the owning student or
    an admin can delete one).
+
+## How mentor-student mapping works
+
+### Why a public `/mentors` endpoint
+
+At signup, a student picks their mentor from a dropdown of existing mentors
+— but that dropdown has to be populated *before* the "Sign Up" button is
+clicked, i.e. before `createUserWithEmailAndPassword` has run and before the
+student has a Firebase ID token. Every other read in this app goes through
+an authenticated endpoint, but there's no account yet to authenticate with
+at this point in the flow, so `GET /mentors` (`backend/app/routers/mentors.py`)
+is deliberately left with no auth dependency and returns only non-sensitive
+fields (`uid`, `name`, `email`) — a minimal public mentor directory, not a
+general-purpose user listing. If the list comes back empty (no mentors have
+signed up yet), the dropdown shows "No mentors available yet" instead of a
+broken/empty `<select>`; the signup form still submits fine with no
+`mentor_id`, and the student can be assigned a mentor later by editing their
+Firestore doc directly until an admin flow for that exists.
+
+### Storing the relationship
+
+The student's chosen mentor is stored as `mentor_id` (the mentor's Firebase
+`uid`, not their name) on the student's own `users/{uid}` doc — a real
+reference rather than a display string, so it stays correct even if the
+mentor later changes their name. `roll_number`, `college_name`, and `year`
+are stored alongside it, all written once at signup by
+`AuthContext.jsx`'s `signup()`.
+
+### Scoping mentors to their own students
+
+Both `GET /pull_requests` and `GET /users` now branch on the caller's role:
+
+- **student** — unchanged: only their own PRs.
+- **mentor** — first queries `users` for `role == "student" && mentor_id ==
+  <the mentor's uid>` to get their assigned student IDs, then queries
+  `pull_requests` for `student_id in <those ids>` (chunked into groups of 30,
+  Firestore's limit for an `in` query, in case a mentor ever has more
+  students than that). `GET /users` does the same first query directly.
+- **admin** — unchanged: everything, unscoped. There's no per-admin
+  assignment concept here; an admin oversees the whole program, matching how
+  `pull_requests` and `feedback` rules already treat `admin` the same as an
+  unrestricted `mentor`.
+
+The mentor dashboard (`MentorDashboard.jsx`) fetches both in parallel, then
+groups PRs client-side by `student_id` and renders one collapsible
+`StudentGroup` card per assigned student (name, roll number, college, year,
+PR count) — including students with zero PRs yet, so a mentor can see their
+whole roster, not just students who've already registered a PR.
+
+### Firestore rules
+
+The `users/{uid}` rule's `read` clause was extended so a mentor can read a
+student's profile doc directly if `resource.data.mentor_id == request.auth.uid`
+— mirroring the backend's scoping as a client-rule safety net, the same way
+`pull_requests`'s rule already grants `mentor`/`admin` broad read access even
+though the backend does its own filtering on top. A mentor still can't read
+any *other* student's doc (one they're not assigned to), or the full user
+list — that full-roster capability only exists server-side, gated by
+`require_role("mentor", "admin")` plus the query-time filter above.
 
 ## How GitHub sync works
 
@@ -375,16 +482,80 @@ The manual **Add PR** flow (`POST /pull_requests`, always `source:
 "manual"`) is untouched and still works exactly as in Phase 1 — GitHub sync
 is purely additive.
 
+## How mentor feedback + notifications work
+
+### Access model (Phase 3 simplification)
+
+Any user with `role == "mentor"` (or `"admin"`) can see and give feedback on
+**every** student's PRs — there's no mentor-to-student assignment yet. The
+backend only checks that the caller's role is `mentor`/`admin` (via
+`Depends(get_current_user)` role checks, and `GET /users` via the
+`require_role("mentor", "admin")` dependency), not which specific students
+they're supposed to be mentoring. Proper assignment/filtering is intended for
+a later admin phase.
+
+### Feedback threads and replies
+
+`feedback` is a single flat Firestore collection for both mentor feedback
+and student replies — a reply is just another `feedback` doc with `parent_id`
+set to the entry it's replying to, rather than a nested field on the parent
+or a separate `replies` sub-collection/endpoint. That was chosen over a
+dedicated reply field because it reuses the exact same model, create
+endpoint, and permission checks for both directions of the conversation
+(`POST /feedback` handles a mentor opening a thread *and* a student or
+mentor replying into one), and keeps the storage shape consistent with how
+`pull_requests` is a single flat collection rather than nested subcollections.
+
+Rules enforced by `POST /feedback` (`backend/app/routers/feedback.py`):
+
+- **Mentor/admin**: can always create a `feedback` doc — either a new
+  top-level thread (`parent_id` omitted) or a reply into an existing one
+  (`parent_id` set). `mentor_id`/`mentor_name` are stamped from the caller.
+- **Student**: can only create a doc when `parent_id` is set (replying into
+  an existing thread on their *own* PR) — attempting to open a new,
+  non-reply thread returns `403`. `mentor_id`/`mentor_name` are left `null`
+  on student-authored entries; `author_id`/`author_name`/`author_role` on
+  every entry identify who actually wrote it (works for both mentor and
+  student authors).
+- Anyone else (a student who doesn't own the PR) gets `403`.
+
+`GET /feedback/pr/{pr_id}` returns the full flat list for that PR (owner or
+mentor/admin only), sorted by `created_at` in Python rather than via
+Firestore `order_by` — filtering by `pr_id` and ordering by a different
+field would need a composite index, which isn't worth the setup step for
+what's typically a handful of docs per PR. The frontend (`PRDetailModal.jsx`)
+groups that flat list into threads client-side: every entry descended from a
+top-level entry (at any depth) is flattened into that thread's reply list, so
+replying always targets the thread's root `feedback` doc regardless of which
+message in the thread you clicked "Reply" under.
+
+### Notifications
+
+Whenever a mentor/admin successfully posts to `POST /feedback` (a new thread
+or a reply), the backend also writes a doc to `notifications`:
+`{ user_id: <the PR's student>, message, read: false, related_pr_id, created_at }`.
+Student replies do **not** generate a notification back to the mentor (out of
+scope for this phase — no mentor-assignment yet to know who to notify).
+
+There's no push/email/websocket infra in this stack, so the frontend's
+`NotificationBell` (in the header) polls `GET /notifications` every 30s and
+on mount. Clicking the bell opens a dropdown of the caller's most recent
+notifications and calls `POST /notifications/mark_read`, which flips every
+currently-unread notification for that user to `read: true` — there's no
+per-notification "mark as read", just "mark everything read on open", to
+keep the UI to a single click.
+
 ## API overview
 
 All endpoints require `Authorization: Bearer <firebase-id-token>`, except
 `/auth/github/callback` (GitHub redirects the browser there directly, with
 no way to attach that header — see "How GitHub sync works" above for how it
-authenticates the request instead).
+authenticates the request instead) and `/mentors` (needed before a student
+account/token exists yet — see "How mentor-student mapping works" above).
 
 | Method | Path                     | Who                   | Description                     |
 |--------|--------------------------|------------------------|----------------------------------|
-| GET    | `/pull_requests`         | any signed-in user     | Student: own PRs. Mentor/Admin: all PRs |
+| GET    | `/pull_requests`         | any signed-in user     | Student: own PRs. Mentor: PRs of their assigned students only. Admin: all PRs |
 | POST   | `/pull_requests`         | student                | Create a PR (`source` is always `"manual"`) |
 | POST   | `/pull_requests/sync`    | student                | Fetch PRs from GitHub and upsert them (`source: "auto"`) |
 | GET    | `/pull_requests/{id}`    | owner, mentor, admin   | Fetch one PR                    |
@@ -392,10 +563,19 @@ authenticates the request instead).
 | DELETE | `/pull_requests/{id}`    | owner or admin         | Delete a PR                     |
 | GET    | `/auth/github/login`     | any signed-in user     | Returns `{ authorize_url }` to redirect the browser to |
 | GET    | `/auth/github/callback`  | GitHub (no auth header)| OAuth callback; redirects back to the dashboard |
+| GET    | `/mentors`               | public (no auth)       | Minimal `{ uid, name, email }` list of mentors, for the signup dropdown |
+| GET    | `/users`                 | mentor, admin           | Mentor: only their assigned students. Admin: everyone. Used for profile details on the mentor dashboard |
+| POST   | `/feedback`              | mentor/admin, or the PR's owning student replying | Create feedback (mentor/admin) or a reply (student, `parent_id` required) |
+| GET    | `/feedback/pr/{pr_id}`   | owner, mentor, admin    | Full feedback thread for a PR, oldest first |
+| GET    | `/notifications`         | any signed-in user      | Caller's most recent notifications (newest first, capped at 20) |
+| POST   | `/notifications/mark_read` | any signed-in user    | Marks every unread notification for the caller as read |
 
 PR `stage` is one of: `Registered`, `PR Raised`, `Under Review`,
 `Changes Requested`, `Re-submitted`, `Approved`, `Merged`, `Closed/Rejected`.
 PR `source` is `"manual"` or `"auto"`.
+
+`feedback.status_recommendation` is one of `"approve"`, `"request_changes"`,
+`"comment"`, or `null` (always `null` on student replies).
 
 ## Testing GitHub sync locally
 

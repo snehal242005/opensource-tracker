@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { ROLES } from "../constants";
+import { listPublicMentors } from "../api";
+import { ROLES, YEAR_OPTIONS } from "../constants";
 import { redirectForRole } from "../utils";
 import AuthLayout from "../components/AuthLayout";
 import FormField, { inputClass } from "../components/FormField";
@@ -14,15 +15,42 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("student");
+  const [rollNumber, setRollNumber] = useState("");
+  const [collegeName, setCollegeName] = useState("");
+  const [year, setYear] = useState(YEAR_OPTIONS[0]);
+  const [mentorId, setMentorId] = useState("");
+  const [mentors, setMentors] = useState([]);
+  const [mentorsLoading, setMentorsLoading] = useState(true);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (role !== "student") return;
+    let cancelled = false;
+    setMentorsLoading(true);
+    listPublicMentors()
+      .then((data) => {
+        if (cancelled) return;
+        setMentors(data);
+        if (data.length > 0) setMentorId((current) => current || data[0].uid);
+      })
+      .catch(() => {
+        if (!cancelled) setMentors([]);
+      })
+      .finally(() => {
+        if (!cancelled) setMentorsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [role]);
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setSubmitting(true);
     try {
-      await signup({ name, email, password, role });
+      await signup({ name, email, password, role, rollNumber, collegeName, year, mentorId });
       redirectForRole(role, navigate);
     } catch (err) {
       setError(err.message);
@@ -91,6 +119,58 @@ export default function Signup() {
             ))}
           </select>
         </FormField>
+
+        {role === "student" && (
+          <>
+            <FormField label="Roll number">
+              <input
+                className={inputClass}
+                value={rollNumber}
+                onChange={(e) => setRollNumber(e.target.value)}
+                placeholder="e.g. CS21B045"
+                required
+              />
+            </FormField>
+
+            <FormField label="College name">
+              <input
+                className={inputClass}
+                value={collegeName}
+                onChange={(e) => setCollegeName(e.target.value)}
+                placeholder="e.g. IIT Bombay"
+                required
+              />
+            </FormField>
+
+            <FormField label="Year">
+              <select className={inputClass} value={year} onChange={(e) => setYear(e.target.value)}>
+                {YEAR_OPTIONS.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+
+            <FormField label="Mentor">
+              {mentorsLoading ? (
+                <p className="text-sm text-muted">Loading mentors...</p>
+              ) : mentors.length === 0 ? (
+                <p className="rounded-lg border border-line-strong bg-panel-2 px-3 py-2 text-sm text-muted">
+                  No mentors available yet. You can pick one later once a mentor has signed up.
+                </p>
+              ) : (
+                <select className={inputClass} value={mentorId} onChange={(e) => setMentorId(e.target.value)}>
+                  {mentors.map((m) => (
+                    <option key={m.uid} value={m.uid}>
+                      {m.name} ({m.email})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </FormField>
+          </>
+        )}
 
         {error && (
           <p className="rounded-lg border border-coral/30 bg-coral/10 px-3 py-2 text-sm text-coral">

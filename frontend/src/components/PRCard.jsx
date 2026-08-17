@@ -1,16 +1,31 @@
 import StageBadge from "./StageBadge";
 
-export default function PRCard({ pr }) {
+export default function PRCard({ pr, studentName, onClick }) {
   const isAuto = pr.source === "auto";
   return (
-    <div className="group flex flex-col gap-3 rounded-xl border border-line bg-panel p-4 shadow-[0_1px_0_rgba(255,255,255,0.02)_inset] transition hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_16px_32px_-16px_rgba(108,99,255,0.35)]">
+    <div
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={
+        onClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") onClick();
+            }
+          : undefined
+      }
+      className={`group flex flex-col gap-3 rounded-xl border border-line bg-panel p-4 shadow-[0_1px_0_rgba(255,255,255,0.02)_inset] transition hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_16px_32px_-16px_rgba(108,99,255,0.35)] ${
+        onClick ? "cursor-pointer" : ""
+      }`}
+    >
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-heading text-sm font-semibold leading-snug text-paper">{pr.title}</h3>
         <StageBadge stage={pr.stage} />
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 min-w-0">
         <p className="truncate font-mono text-xs text-muted">{pr.repo}</p>
+        {studentName && <p className="shrink-0 truncate text-xs text-muted">· {studentName}</p>}
         <span
           title={isAuto ? "Synced automatically from GitHub" : "Added manually"}
           className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
@@ -32,6 +47,7 @@ export default function PRCard({ pr }) {
         href={pr.url}
         target="_blank"
         rel="noreferrer"
+        onClick={(e) => e.stopPropagation()}
         className="mt-auto inline-flex items-center gap-1 text-sm font-medium text-signal-soft transition group-hover:gap-1.5 hover:text-violet"
       >
         View pull request

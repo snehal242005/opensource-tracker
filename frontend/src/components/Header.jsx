@@ -1,5 +1,6 @@
 import { useAuth } from "../context/AuthContext";
 import Logo from "./Logo";
+import NotificationBell from "./NotificationBell";
 
 const ROLE_STYLES = {
   student: "bg-signal/15 text-signal-soft ring-1 ring-inset ring-signal/30",
@@ -32,6 +33,7 @@ export default function Header() {
                 {profile.role}
               </span>
             </div>
+            <NotificationBell />
             <button onClick={logout} className="btn-secondary !px-3 !py-1.5">
               Log out
             </button>

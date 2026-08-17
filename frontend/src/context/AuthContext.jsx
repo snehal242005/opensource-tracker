@@ -36,7 +36,7 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  async function signup({ name, email, password, role }) {
+  async function signup({ name, email, password, role, rollNumber, collegeName, year, mentorId }) {
     const credential = await createUserWithEmailAndPassword(auth, email, password);
     const userDoc = {
       uid: credential.user.uid,
@@ -45,6 +45,12 @@ export function AuthProvider({ children }) {
       role,
       created_at: serverTimestamp(),
     };
+    if (role === "student") {
+      userDoc.roll_number = rollNumber || null;
+      userDoc.college_name = collegeName || null;
+      userDoc.year = year || null;
+      userDoc.mentor_id = mentorId || null;
+    }
     await setDoc(doc(db, "users", credential.user.uid), userDoc);
     setProfile(userDoc);
     return credential.user;

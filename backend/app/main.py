@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import config
 from .firebase_config import init_firebase, is_ready
-from .routers import auth, pull_requests
+from .routers import auth, feedback, mentors, notifications, pull_requests, users
 
 app = FastAPI(title="Open Source Tracker API", version="0.1.0")
 
@@ -25,6 +25,10 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(pull_requests.router)
+app.include_router(feedback.router)
+app.include_router(notifications.router)
+app.include_router(users.router)
+app.include_router(mentors.router)
 
 
 @app.on_event("startup")

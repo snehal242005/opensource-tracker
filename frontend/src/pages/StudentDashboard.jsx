@@ -10,6 +10,7 @@ import { useAuth } from "../context/AuthContext";
 import PageShell from "../components/PageShell";
 import PRForm from "../components/PRForm";
 import PRCard from "../components/PRCard";
+import PRDetailModal from "../components/PRDetailModal";
 import Modal from "../components/Modal";
 import EmptyPRsIllustration from "../components/EmptyPRsIllustration";
 import StatTile from "../components/StatTile";
@@ -24,6 +25,7 @@ export default function StudentDashboard() {
   const [showForm, setShowForm] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [selectedPr, setSelectedPr] = useState(null);
 
   async function refresh() {
     setLoading(true);
@@ -228,7 +230,7 @@ export default function StudentDashboard() {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {prs.map((pr) => (
-              <PRCard key={pr.id} pr={pr} />
+              <PRCard key={pr.id} pr={pr} onClick={() => setSelectedPr(pr)} />
             ))}
           </div>
         )}
@@ -238,6 +240,14 @@ export default function StudentDashboard() {
         <Modal title="Add a pull request" onClose={() => setShowForm(false)}>
           <PRForm onCreate={handleCreate} onDone={() => setShowForm(false)} />
         </Modal>
+      )}
+
+      {selectedPr && (
+        <PRDetailModal
+          pr={selectedPr}
+          canGiveFeedback={false}
+          onClose={() => setSelectedPr(null)}
+        />
       )}
     </PageShell>
   );
